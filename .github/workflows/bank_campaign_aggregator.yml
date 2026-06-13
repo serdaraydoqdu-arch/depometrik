@@ -23,7 +23,7 @@ jobs:
       - name: Python Bağımlılıklarını ve Tarayıcı Motorlarını Yükle
         run: |
           python -m pip install --upgrade pip
-          pip install crawl4ai google-genai pydantic supabase playwright
+          pip install -r requirements.txt
           # Playwright aracılığıyla Chromium tarayıcı ikili dosyalarını (binaries) indir
           python -m playwright install chromium
 
