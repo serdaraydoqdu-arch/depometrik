@@ -26,6 +26,9 @@ streams:
       # Katıldığı banka kampanyaları (campaign_id -> id)
       - SELECT campaign_id as id, * FROM public.campaigns WHERE user_id = auth.user_id()
       
+      # Kullanıcının cüzdanındaki kartlar (user_cards -> id)
+      - SELECT id, user_id, bank_name, card_program FROM public.user_cards WHERE user_id = auth.user_id()
+      
       # OBD Cihazından okunan veriler (reading_id -> id)
       - SELECT reading_id as id, * FROM public.obd_readings WHERE vehicle_id IN (
           SELECT vehicle_id FROM public.vehicles WHERE user_id = auth.user_id()
@@ -43,3 +46,6 @@ streams:
     queries:
       # İstasyon coğrafi konum veri havuzu (station_id -> id)
       - SELECT station_id as id, * FROM public.stations
+      
+      # Tüm aktif banka kampanyaları havuzu (global_campaigns -> id)
+      - SELECT id, bank_name, station_brand, target_tx_count, min_tx_amount, reward_amount, is_different_days_required, expiry_date, is_active FROM public.global_campaigns

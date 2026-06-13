@@ -1,6 +1,8 @@
 import os
 import asyncio
 import uuid
+import json
+import urllib.parse
 from datetime import datetime
 from pydantic import BaseModel, Field
 from google import genai
@@ -8,7 +10,26 @@ from supabase import create_client, Client
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, UndetectedAdapter
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 
+# Load .env file manually if it exists
+if os.path.exists(".env"):
+    with open(".env", "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ[k.strip()] = v.strip()
+
 # Pydantic schemas for Gemini Structured Outputs
+
+# Step 1 Schema: Extracting campaign detail URLs
+class CampaignLink(BaseModel):
+    title: str = Field(description="Title of the campaign")
+    url: str = Field(description="Relative or absolute URL of the campaign detail page")
+
+class CampaignLinkList(BaseModel):
+    campaign_links: list[CampaignLink]
+
+# Step 2 Schema: Extracting structured campaign rules
 class CampaignRule(BaseModel):
     bank_name: str = Field(description="Official name of the bank organizing the campaign. E.g. Garanti BBVA, İş Bankası, Yapı Kredi, Akbank, Ziraat Bankası, VakıfBank")
     station_brand: str = Field(description="The fuel brand targeted. Must be one of: Shell, Opet, BP, Petrol Ofisi, Aygaz, Total, or Genel if it applies to all stations.")
@@ -23,145 +44,277 @@ class CampaignExtractionList(BaseModel):
 
 # Target Bank Campaign URLs
 CAMPAIGN_SOURCES = [
-    {"bank": "Garanti BBVA", "url": "https://www.bonus.com.tr/kampanyalar"},
-    {"bank": "Yapı Kredi", "url": "https://www.worldcard.com.tr/kampanyalar"},
-    {"bank": "İş Bankası", "url": "https://www.maximum.com.tr/kampanyalar"},
+    {
+        "bank": "Garanti BBVA",
+        "list_url": "https://www.bonus.com.tr/kampanyalar",
+        "base_url": "https://www.bonus.com.tr"
+    },
+    {
+        "bank": "Yapı Kredi",
+        "list_url": "https://www.worldcard.com.tr/firsatlar",
+        "base_url": "https://www.worldcard.com.tr"
+    },
+    {
+        "bank": "İş Bankası",
+        "list_url": "https://www.maximum.com.tr/kampanyalar",
+        "base_url": "https://www.maximum.com.tr"
+    },
 ]
 
-async def scrape_and_parse(url: str, bank_name: str) -> list[dict]:
-    print(f"Scraping campaign page for {bank_name}...")
+KEYWORDS = ["akaryakıt", "petrol", "motorin", "dizel", "lpg", "shell", "opet", "bp", "petrol ofisi", "aygaz", "total", "yakıt", "world üye", "maximum üye", "bonus üye"]
+
+def clean_markdown_by_keywords(markdown_text: str, keywords: list[str], window_before: int = 5, window_after: int = 10) -> str:
+    """
+    Filters the markdown text to keep only lines matching keywords along with surrounding context lines.
+    This helps keep token counts extremely small and avoids Gemini 429 quota limits.
+    """
+    if not markdown_text:
+        return ""
+    lines = markdown_text.splitlines()
+    matching_indices = []
     
-    # Configure Crawl4AI with Stealth Mode
+    for idx, line in enumerate(lines):
+        line_lower = line.lower()
+        if any(kw in line_lower for kw in keywords):
+            matching_indices.append(idx)
+            
+    if not matching_indices:
+        return ""
+        
+    keep_indices = set()
+    for idx in matching_indices:
+        start = max(0, idx - window_before)
+        end = min(len(lines), idx + window_after + 1)
+        for i in range(start, end):
+            keep_indices.add(i)
+            
+    sorted_indices = sorted(list(keep_indices))
+    cleaned_lines = []
+    last_idx = -1
+    for idx in sorted_indices:
+        if last_idx != -1 and idx > last_idx + 1:
+            cleaned_lines.append("\n... [content omitted] ...\n")
+        cleaned_lines.append(lines[idx])
+        last_idx = idx
+        
+    return "\n".join(cleaned_lines)
+
+async def scrape_url_content(url: str, browser_config: BrowserConfig, delay: float = 3.0) -> str:
+    """
+    Crawls a URL using Crawl4AI, falling back to Undetected Browser if needed.
+    """
+    run_config = CrawlerRunConfig(
+        delay_before_return_html=delay,
+        flatten_shadow_dom=True
+    )
+    
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(url, config=run_config)
+        if result.success:
+            return result.markdown or ""
+            
+    # Fallback to Undetected Browser adapter
+    print(f"Stealth Mode failed/empty for {url}. Retrying with Undetected Browser Adapter...")
+    try:
+        adapter = UndetectedAdapter()
+        strategy = AsyncPlaywrightCrawlerStrategy(
+            browser_config=browser_config,
+            browser_adapter=adapter
+        )
+        async with AsyncWebCrawler(crawler_strategy=strategy, config=browser_config) as undetected_crawler:
+            result_undetected = await undetected_crawler.arun(url, config=run_config)
+            if result_undetected.success:
+                return result_undetected.markdown or ""
+    except Exception as e:
+        print(f"Undetected Browser fallback error: {e}")
+        
+    return ""
+
+async def call_gemini_with_retry(client: genai.Client, prompt: str, schema: type, model: str = 'gemini-2.5-flash', max_retries: int = 3, initial_delay: float = 20.0) -> dict:
+    """
+    Calls Gemini API with exponential backoff on 429 rate limit errors.
+    """
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config={
+                    'response_mime_type': 'application/json',
+                    'response_schema': schema,
+                    'temperature': 0.1
+                }
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                print(f"Gemini API rate limit hit (429). Retrying in {delay} seconds (Attempt {attempt+1}/{max_retries})...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                print(f"Gemini API error during call: {e}")
+                raise e
+    raise RuntimeError("Failed to get response from Gemini API after maximum retries due to rate limits.")
+
+async def get_active_campaign_links(client: genai.Client, bank_name: str, list_url: str, browser_config: BrowserConfig) -> list[dict]:
+    """
+    Step 1: Scrapes the list page, filters it, and queries Gemini to extract active fuel campaign URLs.
+    """
+    markdown_content = await scrape_url_content(list_url, browser_config, delay=4.0)
+    if not markdown_content:
+        print(f"Failed to scrape list page for {bank_name}.")
+        return []
+        
+    cleaned_markdown = clean_markdown_by_keywords(markdown_content, KEYWORDS, window_before=4, window_after=8)
+    if not cleaned_markdown:
+        print(f"No fuel campaign keywords found in list page for {bank_name}.")
+        return []
+        
+    # Save list page markdown for debugging
+    safe_bank_name = bank_name.replace(" ", "_")
+    os.makedirs("scratch/scraped_pages", exist_ok=True)
+    with open(f"scratch/scraped_pages/{safe_bank_name}_list_cleaned.md", "w", encoding="utf-8") as f:
+        f.write(cleaned_markdown)
+
+    prompt = f"""
+    You are an expert financial analyst. Analyze the following scraped markdown content of the bank campaigns page for {bank_name}.
+    Extract only the active campaigns that are related to 'Akaryakıt' (fuel/petrol/diesel/LPG, E.g. Shell, Opet, BP, Petrol Ofisi, Aygaz).
+    Do NOT extract campaigns that are under the expired section marked 'SÜRESİ BİTTİ' or whose links end in '#gecmis' or '#gecmis-kampanyalar'.
+    For each matched active campaign, extract its title and its detail page URL.
+
+    Scraped Markdown Content:
+    {cleaned_markdown}
+    """
+    
+    try:
+        data = await call_gemini_with_retry(client, prompt, CampaignLinkList)
+        return data.get("campaign_links", [])
+    except Exception as e:
+        print(f"Gemini Step 1 parsing failed for {bank_name}: {e}")
+        return []
+
+async def parse_campaign_detail(client: genai.Client, bank_name: str, detail_url: str, title: str, browser_config: BrowserConfig, current_date: str) -> dict:
+    """
+    Step 2: Scrapes a campaign's detail page, filters the content, and extracts the structured rules.
+    """
+    markdown_content = await scrape_url_content(detail_url, browser_config, delay=3.0)
+    if not markdown_content:
+        print(f"Failed to scrape detail page for {title} ({detail_url})")
+        return None
+        
+    cleaned_detail = clean_markdown_by_keywords(markdown_content, KEYWORDS, window_before=8, window_after=15)
+    if not cleaned_detail:
+        cleaned_detail = markdown_content[:15000] # Fallback to first 15k chars
+        
+    # Save detail page markdown for debugging
+    safe_title = "".join([c for c in title if c.isalnum() or c == " "]).replace(" ", "_")[:30]
+    os.makedirs("scratch/scraped_pages", exist_ok=True)
+    with open(f"scratch/scraped_pages/detail_{safe_title}.md", "w", encoding="utf-8") as f:
+        f.write(cleaned_detail)
+
+    detail_prompt = f"""
+    You are an expert financial analyst. Analyze the following scraped markdown of a single bank campaign detail page for {bank_name}.
+    Extract the campaign terms strictly matching the JSON schema provided.
+
+    Current Date context:
+    - The current date is {current_date}.
+    - Use this to calculate absolute expiry date if a relative expiry date is given (like 'Son X gün' or 'Kampanya X tarihine kadar geçerlidir').
+    - If the expiry year is not specified, assume it is {datetime.now().year}.
+
+    Scraped Markdown:
+    {cleaned_detail}
+    """
+    
+    try:
+        rule = await call_gemini_with_retry(client, detail_prompt, CampaignRule)
+        return rule
+    except Exception as e:
+        print(f"Gemini Step 2 parsing failed for {title}: {e}")
+        return None
+
+async def main():
+    # Setup Gemini API client
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("GEMINI_API_KEY not found in environment variables.")
+        return
+        
+    client = genai.Client(api_key=api_key)
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Configure Crawl4AI Browser
     browser_config = BrowserConfig(
         enable_stealth=True,
         headless=True,
         viewport_width=1920,
         viewport_height=1080,
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        extra_args=["--disable-http2"]
     )
-    
-    markdown_content = ""
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        result = await crawler.arun(url)
-        if result.success:
-            markdown_content = result.markdown
-        else:
-            print(f"Stealth Mode failed for {bank_name}. Trying Undetected Browser...")
-            adapter = UndetectedAdapter()
-            strategy = AsyncPlaywrightCrawlerStrategy(
-                browser_config=browser_config,
-                browser_adapter=adapter
-            )
-            async with AsyncWebCrawler(crawler_strategy=strategy, config=browser_config) as undetected_crawler:
-                run_config = CrawlerRunConfig(flatten_shadow_dom=True, word_count_threshold=20)
-                result_undetected = await undetected_crawler.arun(url, config=run_config)
-                if result_undetected.success:
-                    markdown_content = result_undetected.markdown
 
-    preview_text = markdown_content[:300].strip().replace('\n', ' ')
-    print(f"Scraped content for {bank_name}. Length: {len(markdown_content)} characters. Preview: {preview_text}")
-    if not markdown_content:
-        print(f"Failed to scrape content for {bank_name}.")
-        return []
+    all_extracted_rules = []
 
-    # Initialize Gemini client
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("GEMINI_API_KEY not found in environment variables.")
-        return []
-
-    client = genai.Client(api_key=api_key)
-    
-    prompt = f"""
-    You are an expert financial analyst. Analyze the following scraped markdown content of the bank campaigns page for {bank_name}.
-    Identify and extract only the campaigns that are related to 'Akaryakıt' (fuel/petrol/diesel/LPG, e.g., Shell, Opet, BP, Petrol Ofisi, Aygaz).
-    Ignore all other categories (food, clothing, e-commerce, travel, etc.).
-    Extract details strictly matching the JSON schema provided.
-
-    Scraped Markdown Content:
-    {markdown_content}
-    """
-
-    # Save the markdown content to a file for review
-    safe_bank_name = bank_name.replace(" ", "_")
-    try:
-        os.makedirs("scratch/scraped_pages", exist_ok=True)
-        with open(f"scratch/scraped_pages/{safe_bank_name}.md", "w", encoding="utf-8") as f:
-            f.write(markdown_content)
-        print(f"Saved scraped content for {bank_name} to scratch/scraped_pages/{safe_bank_name}.md")
-    except Exception as save_err:
-        print(f"Failed to save scraped page to file: {save_err}")
-
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config={
-                'response_mime_type': 'application/json',
-                'response_schema': CampaignExtractionList,
-                'temperature': 0.1
-            }
-        )
+    # Step 1 & 2 Execution
+    for source in CAMPAIGN_SOURCES:
+        bank_name = source["bank"]
+        print(f"\n=== Processing {bank_name} ===")
+        links = await get_active_campaign_links(client, bank_name, source["list_url"], browser_config)
+        print(f"Found {len(links)} candidate campaigns for {bank_name}.")
         
-        print(f"Gemini Raw Response for {bank_name}: {response.text}")
-        
-        # Parse output JSON
-        import json
-        data = json.loads(response.text)
-        return data.get("campaigns", [])
-    except Exception as e:
-        print(f"Gemini API parsing failed for {bank_name}: {e}")
-        return []
+        for link in links:
+            absolute_url = urllib.parse.urljoin(source["base_url"], link["url"])
+            print(f"Processing details for: {link['title']} | URL: {absolute_url}")
+            rule = await parse_campaign_detail(client, bank_name, absolute_url, link["title"], browser_config, current_date)
+            if rule:
+                # Ensure bank name matches correctly
+                rule["bank_name"] = bank_name
+                all_extracted_rules.append(rule)
+                print(f"Successfully extracted rule: {rule}")
+            await asyncio.sleep(1.0) # Small pause between pages
 
-async def main():
+    print(f"\nExtraction complete. Total campaigns extracted: {len(all_extracted_rules)}")
+
+    # Database synchronization (Supabase)
     supabase_url = os.environ.get("SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     
     if not supabase_url or not supabase_key:
-        print("Supabase credentials not found in environment variables. Running in dry-run mode.")
-        supabase = None
+        print("Supabase credentials not found in environment. Running in dry-run mode.")
+        for r in all_extracted_rules:
+            print(f"Dry-run Campaign: {r}")
     else:
         supabase: Client = create_client(supabase_url, supabase_key)
-
-    all_extracted_rules = []
-    
-    for source in CAMPAIGN_SOURCES:
-        campaigns = await scrape_and_parse(source["url"], source["bank"])
-        for camp in campaigns:
-            all_extracted_rules.append(camp)
-
-    print(f"Extracted {len(all_extracted_rules)} campaigns in total.")
-    
-    if supabase:
         for rule in all_extracted_rules:
-            # Prepare row for Supabase global_campaigns
+            expiry_val = rule.get("expiry_date", "")
+            if expiry_val:
+                if "T" not in expiry_val:
+                    expiry_val = f"{expiry_val}T23:59:59Z"
+            else:
+                expiry_val = None
+                
             row = {
                 "id": str(uuid.uuid4()),
                 "bank_name": rule["bank_name"],
                 "station_brand": rule["station_brand"],
-                "target_tx_count": rule["target_tx_count"],
-                "min_tx_amount": rule["min_tx_amount"],
-                "reward_amount": rule["reward_amount"],
-                "is_different_days_required": rule["is_different_days_required"],
-                "expiry_date": rule["expiry_date"] + "T23:59:59Z", # Standardize to ISO timestamp
+                "target_tx_count": int(rule.get("target_tx_count", 4)),
+                "min_tx_amount": float(rule.get("min_tx_amount", 0.0)),
+                "reward_amount": float(rule.get("reward_amount", 0.0)),
+                "is_different_days_required": bool(rule.get("is_different_days_required", True)),
+                "expiry_date": expiry_val,
                 "is_active": True
             }
             
             try:
-                # Upsert to prevent duplicate campaigns on (bank_name, station_brand, expiry_date)
-                # In PostgreSQL, we have a unique constraint/index. 
-                # This syntax performs an upsert:
-                res = supabase.table("global_campaigns").upsert(
-                    row, 
+                # Upsert based on bank_name, station_brand, and expiry_date constraints
+                supabase.table("global_campaigns").upsert(
+                    row,
                     on_conflict="bank_name,station_brand,expiry_date"
                 ).execute()
-                print(f"Upserted campaign for {rule['bank_name']} - {rule['station_brand']}.")
+                print(f"Successfully upserted: {rule['bank_name']} - {rule['station_brand']} (Expiry: {rule['expiry_date']})")
             except Exception as e:
-                print(f"Supabase upsert failed: {e}")
-    else:
-        print("Dry Run complete. Extracted campaigns:")
-        for r in all_extracted_rules:
-            print(f" - {r}")
+                print(f"Supabase upsert failed for {rule['bank_name']} {rule['station_brand']}: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
