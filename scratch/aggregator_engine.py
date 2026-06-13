@@ -82,6 +82,16 @@ async def scrape_and_parse(url: str, bank_name: str) -> list[dict]:
     {markdown_content}
     """
 
+    # Save the markdown content to a file for review
+    safe_bank_name = bank_name.replace(" ", "_")
+    try:
+        os.makedirs("scratch/scraped_pages", exist_ok=True)
+        with open(f"scratch/scraped_pages/{safe_bank_name}.md", "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+        print(f"Saved scraped content for {bank_name} to scratch/scraped_pages/{safe_bank_name}.md")
+    except Exception as save_err:
+        print(f"Failed to save scraped page to file: {save_err}")
+
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
@@ -92,6 +102,8 @@ async def scrape_and_parse(url: str, bank_name: str) -> list[dict]:
                 'temperature': 0.1
             }
         )
+        
+        print(f"Gemini Raw Response for {bank_name}: {response.text}")
         
         # Parse output JSON
         import json
