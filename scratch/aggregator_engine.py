@@ -302,7 +302,10 @@ async def main():
                 if "T" not in expiry_val:
                     expiry_val = f"{expiry_val}T23:59:59Z"
             else:
-                expiry_val = None
+                import calendar
+                now = datetime.now()
+                _, last_day = calendar.monthrange(now.year, now.month)
+                expiry_val = f"{now.year}-{now.month:02d}-{last_day:02d}T23:59:59Z"
                 
             row = {
                 "id": str(uuid.uuid4()),
