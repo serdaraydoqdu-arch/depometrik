@@ -12,20 +12,20 @@ from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 class CampaignRule(BaseModel):
     bank_name: str = Field(description="Official name of the bank organizing the campaign. E.g. Garanti BBVA, İş Bankası, Yapı Kredi, Akbank, Ziraat Bankası, VakıfBank")
     station_brand: str = Field(description="The fuel brand targeted. Must be one of: Shell, Opet, BP, Petrol Ofisi, Aygaz, Total, or Genel if it applies to all stations.")
-    target_tx_count: int = Field(description="Target number of transactions required to unlock the reward. E.g. 4")
-    min_tx_amount: float = Field(description="Minimum transaction amount in Turkish Liras for each purchase to count.")
-    reward_amount: float = Field(description="Total reward amount in TL (points or cashback) unlocked upon completion.")
-    is_different_days_required: bool = Field(description="True if purchases must be made on different days, false otherwise.")
-    expiry_date: str = Field(description="Expiry date of the campaign in YYYY-MM-DD format.")
+    target_tx_count: int = Field(default=4, description="Target number of transactions required to unlock the reward. E.g. 4")
+    min_tx_amount: float = Field(default=0.0, description="Minimum transaction amount in Turkish Liras for each purchase to count.")
+    reward_amount: float = Field(default=0.0, description="Total reward amount in TL (points or cashback) unlocked upon completion.")
+    is_different_days_required: bool = Field(default=True, description="True if purchases must be made on different days, false otherwise.")
+    expiry_date: str = Field(default="", description="Expiry date of the campaign in YYYY-MM-DD format.")
 
 class CampaignExtractionList(BaseModel):
     campaigns: list[CampaignRule]
 
 # Target Bank Campaign URLs
 CAMPAIGN_SOURCES = [
-    {"bank": "Garanti BBVA", "url": "https://www.bonus.com.tr/kampanyalar/akaryakit-kampanyalari"},
-    {"bank": "Yapı Kredi", "url": "https://www.worldcard.com.tr/kampanyalar/akaryakit"},
-    {"bank": "İş Bankası", "url": "https://www.maximum.com.tr/kampanyalar/akaryakit"},
+    {"bank": "Garanti BBVA", "url": "https://www.bonus.com.tr/kampanyalar"},
+    {"bank": "Yapı Kredi", "url": "https://www.worldcard.com.tr/kampanyalar"},
+    {"bank": "İş Bankası", "url": "https://www.maximum.com.tr/kampanyalar"},
 ]
 
 async def scrape_and_parse(url: str, bank_name: str) -> list[dict]:
