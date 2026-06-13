@@ -1,0 +1,45 @@
+# PowerSync Senkronizasyon Kuralları (sync_rules.yaml)
+# Faz 3: Edition 3 Sync Streams Formatı
+
+config:
+  edition: 3
+
+streams:
+  # Kullanıcı bazlı izole edilmiş veri havuzu (Kişisel araçlar, yakıt alımları, harcamalar, kuyruklar)
+  user_data:
+    auto_subscribe: true
+    queries:
+      # Kullanıcı profili (user_id -> id)
+      - SELECT user_id as id, * FROM public.profiles WHERE user_id = auth.user_id()
+      
+      # Kullanıcıya ait araçlar (vehicle_id -> id)
+      - SELECT vehicle_id as id, * FROM public.vehicles WHERE user_id = auth.user_id()
+      
+      # Araçlara bağlı yakıt alım kayıtları (refueling_id -> id)
+      - SELECT refueling_id as id, * FROM public.refuelings WHERE vehicle_id IN (
+          SELECT vehicle_id FROM public.vehicles WHERE user_id = auth.user_id()
+        )
+      
+      # Kart harcama kayıtları (transaction_id -> id)
+      - SELECT transaction_id as id, * FROM public.card_transactions WHERE user_id = auth.user_id()
+      
+      # Katıldığı banka kampanyaları (campaign_id -> id)
+      - SELECT campaign_id as id, * FROM public.campaigns WHERE user_id = auth.user_id()
+      
+      # OBD Cihazından okunan veriler (reading_id -> id)
+      - SELECT reading_id as id, * FROM public.obd_readings WHERE vehicle_id IN (
+          SELECT vehicle_id FROM public.vehicles WHERE user_id = auth.user_id()
+        )
+      
+      # Çevrimdışı yıkıcı işlem kuyruğu (queue_id -> id)
+      - SELECT queue_id as id, * FROM public.destructive_offline_queue WHERE user_id = auth.user_id()
+      
+      # Çevrimdışı fiş/belge kuyruğu (attachment_id -> id)
+      - SELECT attachment_id as id, * FROM public.attachment_queue WHERE user_id = auth.user_id()
+
+  # Genel veriler (Tüm kullanıcılar tarafından ortak okunan veriler)
+  global_data:
+    auto_subscribe: true
+    queries:
+      # İstasyon coğrafi konum veri havuzu (station_id -> id)
+      - SELECT station_id as id, * FROM public.stations
