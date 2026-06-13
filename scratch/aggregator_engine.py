@@ -149,8 +149,8 @@ async def call_gemini_with_retry(client: genai.Client, prompt: str, schema: type
             return json.loads(response.text)
         except Exception as e:
             err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                print(f"Gemini API rate limit hit (429). Retrying in {delay} seconds (Attempt {attempt+1}/{max_retries})...")
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                print(f"Gemini API rate limit or service error ({err_str}). Retrying in {delay} seconds (Attempt {attempt+1}/{max_retries})...")
                 await asyncio.sleep(delay)
                 delay *= 2  # Exponential backoff
             else:
@@ -307,10 +307,10 @@ async def main():
             }
             
             try:
-                # Upsert based on bank_name, station_brand, and expiry_date constraints
+                # Upsert based on bank_name, station_brand, reward_amount, min_tx_amount, and expiry_date constraints
                 supabase.table("global_campaigns").upsert(
                     row,
-                    on_conflict="bank_name,station_brand,expiry_date"
+                    on_conflict="bank_name,station_brand,reward_amount,min_tx_amount,expiry_date"
                 ).execute()
                 print(f"Successfully upserted: {rule['bank_name']} - {rule['station_brand']} (Expiry: {rule['expiry_date']})")
             except Exception as e:
