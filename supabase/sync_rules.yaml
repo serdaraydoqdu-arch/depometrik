@@ -1,11 +1,8 @@
-# PowerSync Senkronizasyon Kuralları (sync_rules.yaml)
-# Faz 3: Edition 3 Sync Streams Formatı
-
 config:
   edition: 3
 
 streams:
-  # Kullanıcı bazlı izole edilmiş veri havuzu (Kişisel araçlar, yakıt alımları, harcamalar, kuyruklar)
+  # Kullanıcı bazlı izole edilmiş veri havuzu (Kişisel araçlar, yakıt alımları, harcamalar, kuyruklar ve cüzdan kartları)
   user_data:
     auto_subscribe: true
     queries:
@@ -25,9 +22,9 @@ streams:
       
       # Katıldığı banka kampanyaları (campaign_id -> id)
       - SELECT campaign_id as id, * FROM public.campaigns WHERE user_id = auth.user_id()
-      
-      # Kullanıcının cüzdanındaki kartlar (user_cards -> id)
-      - SELECT id, user_id, bank_name, card_program FROM public.user_cards WHERE user_id = auth.user_id()
+
+      # Kullanıcının cüzdanına eklediği kartlar (id -> id)
+      - SELECT id, * FROM public.user_cards WHERE user_id = auth.user_id()
       
       # OBD Cihazından okunan veriler (reading_id -> id)
       - SELECT reading_id as id, * FROM public.obd_readings WHERE vehicle_id IN (
@@ -46,6 +43,6 @@ streams:
     queries:
       # İstasyon coğrafi konum veri havuzu (station_id -> id)
       - SELECT station_id as id, * FROM public.stations
-      
-      # Tüm aktif banka kampanyaları havuzu (global_campaigns -> id)
-      - SELECT id, bank_name, station_brand, target_tx_count, min_tx_amount, reward_amount, is_different_days_required, expiry_date, is_active FROM public.global_campaigns
+
+      # Tüm aktif banka akaryakıt kampanyaları (id -> id)
+      - SELECT id, * FROM public.global_campaigns WHERE is_active = true
