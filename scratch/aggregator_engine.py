@@ -5,9 +5,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from google import genai
 from supabase import create_client, Client
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-from crawl4ai.browser_adapters import UndetectedAdapter
-from crawl4ai.async_playwright_crawler import AsyncPlaywrightCrawlerStrategy
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, UndetectedAdapter
+from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
 
 # Pydantic schemas for Gemini Structured Outputs
 class CampaignRule(BaseModel):
