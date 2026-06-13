@@ -782,7 +782,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
 
                   if (uri != null) {
                     try {
-                      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      final launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
                       if (!launched) {
                         throw Exception('Could not launch');
                       }
