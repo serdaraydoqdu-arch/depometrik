@@ -60,6 +60,7 @@ dependencies:
   powersync: ^2.2.0
   sqlite_async: ^0.14.2
   drift_sqlite_async: ^0.3.1
+  url_launcher: ^6.3.2
 
 
 dev_dependencies:

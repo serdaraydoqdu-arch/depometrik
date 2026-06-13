@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../data/local/db/app_database.dart';
 import '../../data/local/db/db_service.dart';
 import '../theme/app_theme.dart';
@@ -749,16 +750,55 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
               _buildDetailItem(Icons.lock_clock_rounded, 'Son Geçerlilik', '${campaign.expiryDate.day}/${campaign.expiryDate.month}/${campaign.expiryDate.year}'),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${campaign.bankName} uygulamasına yönlendiriliyorsunuz...'),
-                      backgroundColor: AppTheme.primaryTeal,
-                    ),
-                  );
+                  
+                  final urlStr = campaign.campaignUrl;
+                  Uri? uri;
+                  if (urlStr != null && urlStr.trim().isNotEmpty) {
+                    uri = Uri.tryParse(urlStr.trim());
+                  }
+
+                  if (uri == null || !uri.hasScheme) {
+                    final bank = campaign.bankName.toLowerCase();
+                    String fallbackUrl = 'https://www.google.com';
+                    if (bank.contains('garanti') || bank.contains('bonus')) {
+                      fallbackUrl = 'https://www.bonus.com.tr';
+                    } else if (bank.contains('yapı') || bank.contains('yapi') || bank.contains('world')) {
+                      fallbackUrl = 'https://www.worldcard.com.tr';
+                    } else if (bank.contains('iş') || bank.contains('is bank') || bank.contains('maximum')) {
+                      fallbackUrl = 'https://www.maximum.com.tr';
+                    } else if (bank.contains('akbank') || bank.contains('axess')) {
+                      fallbackUrl = 'https://www.axess.com.tr';
+                    } else if (bank.contains('qnb') || bank.contains('finans')) {
+                      fallbackUrl = 'https://www.cardfinans.com';
+                    } else if (bank.contains('halk') || bank.contains('paraf')) {
+                      fallbackUrl = 'https://www.parafcard.com.tr';
+                    } else if (bank.contains('ziraat') || bank.contains('bankkart')) {
+                      fallbackUrl = 'https://www.bankkart.com.tr';
+                    }
+                    uri = Uri.tryParse(fallbackUrl);
+                  }
+
+                  if (uri != null) {
+                    try {
+                      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      if (!launched) {
+                        throw Exception('Could not launch');
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Sayfa açılamadı: $uri'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  }
                 },
-                child: const Text('KAMPANYAYA KATIL'),
+                child: const Text('KAMPANYAYA YÖNLENDİR'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(

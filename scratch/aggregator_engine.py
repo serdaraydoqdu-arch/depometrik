@@ -61,7 +61,17 @@ CAMPAIGN_SOURCES = [
     },
 ]
 
+import re
+
 KEYWORDS = ["akaryakıt", "petrol", "motorin", "dizel", "lpg", "shell", "opet", "bp", "petrol ofisi", "aygaz", "total", "yakıt", "world üye", "maximum üye", "bonus üye"]
+
+# Compile regexes once
+KEYWORD_REGEXES = []
+for kw in KEYWORDS:
+    if " " in kw:
+        KEYWORD_REGEXES.append(re.compile(re.escape(kw), re.IGNORECASE))
+    else:
+        KEYWORD_REGEXES.append(re.compile(rf'\b{re.escape(kw)}\b', re.IGNORECASE))
 
 def clean_markdown_by_keywords(markdown_text: str, keywords: list[str], window_before: int = 5, window_after: int = 10) -> str:
     """
@@ -74,8 +84,7 @@ def clean_markdown_by_keywords(markdown_text: str, keywords: list[str], window_b
     matching_indices = []
     
     for idx, line in enumerate(lines):
-        line_lower = line.lower()
-        if any(kw in line_lower for kw in keywords):
+        if any(rx.search(line) for rx in KEYWORD_REGEXES):
             matching_indices.append(idx)
             
     if not matching_indices:
@@ -270,6 +279,7 @@ async def main():
             if rule:
                 # Ensure bank name matches correctly
                 rule["bank_name"] = bank_name
+                rule["campaign_url"] = absolute_url
                 all_extracted_rules.append(rule)
                 print(f"Successfully extracted rule: {rule}")
             await asyncio.sleep(1.0) # Small pause between pages
@@ -303,6 +313,7 @@ async def main():
                 "reward_amount": float(rule.get("reward_amount", 0.0)),
                 "is_different_days_required": bool(rule.get("is_different_days_required", True)),
                 "expiry_date": expiry_val,
+                "campaign_url": rule.get("campaign_url", ""),
                 "is_active": True
             }
             

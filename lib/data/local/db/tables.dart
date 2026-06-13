@@ -168,6 +168,7 @@ class GlobalCampaigns extends Table {
   BoolColumn get isDifferentDaysRequired => boolean().withDefault(const Constant(true))();
   DateTimeColumn get expiryDate => dateTime()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  TextColumn get campaignUrl => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {campaignId};

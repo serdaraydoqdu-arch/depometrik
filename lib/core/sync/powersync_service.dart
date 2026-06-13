@@ -85,6 +85,7 @@ class PowerSyncService {
         Column.integer('is_different_days_required'),
         Column.text('expiry_date'),
         Column.integer('is_active'),
+        Column.text('campaign_url'),
       ]),
       Table('user_cards', [
         Column.text('user_id'),
