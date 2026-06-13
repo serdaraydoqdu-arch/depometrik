@@ -38,6 +38,7 @@ class CampaignRule(BaseModel):
     reward_amount: float = Field(default=0.0, description="Total reward amount in TL (points or cashback) unlocked upon completion.")
     is_different_days_required: bool = Field(default=True, description="True if purchases must be made on different days, false otherwise.")
     expiry_date: str = Field(default="", description="Expiry date of the campaign in YYYY-MM-DD format.")
+    campaign_url: str = Field(default="", description="The campaign detail URL.")
 
 class CampaignExtractionList(BaseModel):
     campaigns: list[CampaignRule]
@@ -167,81 +168,178 @@ async def call_gemini_with_retry(client: genai.Client, prompt: str, schema: type
                 raise e
     raise RuntimeError("Failed to get response from Gemini API after maximum retries due to rate limits.")
 
+async def call_gemini_search_then_parse(client: genai.Client, search_prompt: str, schema: type, model: str = 'gemini-2.5-flash', max_retries: int = 3, initial_delay: float = 20.0) -> dict:
+    """
+    Two-pass approach:
+    1. Call Gemini with Google Search tool (no schema constraint) to search the web and return plain text detail.
+    2. Pass the search text detail to Gemini again with response_schema to get structured JSON.
+    This guarantees compatibility across all Gemini API versions and models.
+    """
+    search_text = ""
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=search_prompt,
+                config={
+                    'tools': [{'google_search': {}}],
+                    'temperature': 0.1
+                }
+            )
+            search_text = response.text
+            if search_text:
+                break
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                print(f"Gemini Search API rate limit ({err_str}). Retrying in {delay} seconds (Attempt {attempt+1}/{max_retries})...")
+                await asyncio.sleep(delay)
+                delay *= 2
+            else:
+                print(f"Gemini Search API error in Pass 1: {e}")
+                raise e
+    
+    if not search_text:
+        raise RuntimeError("Pass 1: Search returned empty content or failed.")
+        
+    parse_prompt = f"""
+    You are an expert financial analyst. From the following gathered information, extract the structured campaign data matching the JSON schema.
+    
+    Gathered Information:
+    {search_text}
+    """
+    return await call_gemini_with_retry(client, parse_prompt, schema, model, max_retries, initial_delay)
+
 async def get_active_campaign_links(client: genai.Client, bank_name: str, list_url: str, browser_config: BrowserConfig) -> list[dict]:
     """
     Step 1: Scrapes the list page, filters it, and queries Gemini to extract active fuel campaign URLs.
+    If direct scraping fails, falls back to Google Search grounding.
     """
+    links = []
+    
+    # Try scraping first
     markdown_content = await scrape_url_content(list_url, browser_config, delay=4.0)
-    if not markdown_content:
-        print(f"Failed to scrape list page for {bank_name}.")
-        return []
+    cleaned_markdown = ""
+    if markdown_content:
+        cleaned_markdown = clean_markdown_by_keywords(markdown_content, KEYWORDS, window_before=4, window_after=8)
         
-    cleaned_markdown = clean_markdown_by_keywords(markdown_content, KEYWORDS, window_before=4, window_after=8)
-    if not cleaned_markdown:
-        print(f"No fuel campaign keywords found in list page for {bank_name}.")
-        return []
-        
-    # Save list page markdown for debugging
-    safe_bank_name = bank_name.replace(" ", "_")
-    os.makedirs("scratch/scraped_pages", exist_ok=True)
-    with open(f"scratch/scraped_pages/{safe_bank_name}_list_cleaned.md", "w", encoding="utf-8") as f:
-        f.write(cleaned_markdown)
+    if cleaned_markdown:
+        # Save list page markdown for debugging
+        safe_bank_name = bank_name.replace(" ", "_")
+        os.makedirs("scratch/scraped_pages", exist_ok=True)
+        with open(f"scratch/scraped_pages/{safe_bank_name}_list_cleaned.md", "w", encoding="utf-8") as f:
+            f.write(cleaned_markdown)
 
-    prompt = f"""
-    You are an expert financial analyst. Analyze the following scraped markdown content of the bank campaigns page for {bank_name}.
-    Extract only the active campaigns that are related to 'Akaryakıt' (fuel/petrol/diesel/LPG, E.g. Shell, Opet, BP, Petrol Ofisi, Aygaz).
-    Do NOT extract campaigns that are under the expired section marked 'SÜRESİ BİTTİ' or whose links end in '#gecmis' or '#gecmis-kampanyalar'.
-    For each matched active campaign, extract its title and its detail page URL.
+        prompt = f"""
+        You are an expert financial analyst. Analyze the following scraped markdown content of the bank campaigns page for {bank_name}.
+        Extract only the active campaigns that are related to 'Akaryakıt' (fuel/petrol/diesel/LPG, E.g. Shell, Opet, BP, Petrol Ofisi, Aygaz).
+        Do NOT extract campaigns that are under the expired section marked 'SÜRESİ BİTTİ' or whose links end in '#gecmis' or '#gecmis-kampanyalar'.
+        For each matched active campaign, extract its title and its detail page URL.
 
-    Scraped Markdown Content:
-    {cleaned_markdown}
+        Scraped Markdown Content:
+        {cleaned_markdown}
+        """
+        try:
+            data = await call_gemini_with_retry(client, prompt, CampaignLinkList)
+            links = data.get("campaign_links", [])
+        except Exception as e:
+            print(f"Gemini Step 1 parsing failed for {bank_name}: {e}")
+
+    # Fallback if no links found (timed out, blocked, or 0 links matched)
+    if not links:
+        print(f"Scraper found 0 campaigns for {bank_name} or connection failed. Initiating Gemini Google Search Fallback...")
+        search_prompt = f"""
+        Search Google to find the active 'Akaryakıt' (fuel/petrol/LPG/diesel, e.g. Shell, Opet, BP, Petrol Ofisi, Aygaz, Total) campaigns for {bank_name} active in June 2026.
+        For each active campaign, find its official campaign detail page URL and title.
+        Do NOT include expired campaigns or past campaigns.
+        """
+        try:
+            data = await call_gemini_search_then_parse(client, search_prompt, CampaignLinkList)
+            links = data.get("campaign_links", [])
+            print(f"Gemini Google Search Fallback successfully found {len(links)} campaigns for {bank_name}!")
+        except Exception as e:
+            print(f"Gemini Google Search Fallback failed for {bank_name}: {e}")
+            
+    return links
+
+async def scrape_and_parse_campaigns_batch(client: genai.Client, bank_name: str, campaigns: list[dict], base_url: str, browser_config: BrowserConfig, current_date: str) -> list[dict]:
     """
+    Scrapes detail pages in parallel, cleans markdown, and sends a single batch prompt to Gemini
+    to extract all rules in one go, dramatically reducing API request counts.
+    If direct scraping fails, falls back to 2-pass Google Search grounding for details.
+    """
+    if not campaigns:
+        return []
+
+    # Parallel Scrape
+    tasks = []
+    urls = []
+    for link in campaigns:
+        abs_url = urllib.parse.urljoin(base_url, link["url"])
+        urls.append((link["title"], abs_url))
+        tasks.append(scrape_url_content(abs_url, browser_config, delay=2.0))
+        
+    print(f"Scraping {len(urls)} detail pages in parallel for {bank_name}...")
+    markdowns = await asyncio.gather(*tasks)
     
-    try:
-        data = await call_gemini_with_retry(client, prompt, CampaignLinkList)
-        return data.get("campaign_links", [])
-    except Exception as e:
-        print(f"Gemini Step 1 parsing failed for {bank_name}: {e}")
-        return []
-
-async def parse_campaign_detail(client: genai.Client, bank_name: str, detail_url: str, title: str, browser_config: BrowserConfig, current_date: str) -> dict:
-    """
-    Step 2: Scrapes a campaign's detail page, filters the content, and extracts the structured rules.
-    """
-    markdown_content = await scrape_url_content(detail_url, browser_config, delay=3.0)
-    if not markdown_content:
-        print(f"Failed to scrape detail page for {title} ({detail_url})")
-        return None
+    # Process scraped contents
+    scraped_details_text = ""
+    for (title, abs_url), md in zip(urls, markdowns):
+        cleaned_md = ""
+        if md:
+            cleaned_md = clean_markdown_by_keywords(md, KEYWORDS, window_before=8, window_after=15)
+            if not cleaned_md:
+                cleaned_md = md[:8000] # Fallback to first 8k chars
         
-    cleaned_detail = clean_markdown_by_keywords(markdown_content, KEYWORDS, window_before=8, window_after=15)
-    if not cleaned_detail:
-        cleaned_detail = markdown_content[:15000] # Fallback to first 15k chars
-        
-    # Save detail page markdown for debugging
-    safe_title = "".join([c for c in title if c.isalnum() or c == " "]).replace(" ", "_")[:30]
-    os.makedirs("scratch/scraped_pages", exist_ok=True)
-    with open(f"scratch/scraped_pages/detail_{safe_title}.md", "w", encoding="utf-8") as f:
-        f.write(cleaned_detail)
-
-    detail_prompt = f"""
-    You are an expert financial analyst. Analyze the following scraped markdown of a single bank campaign detail page for {bank_name}.
-    Extract the campaign terms strictly matching the JSON schema provided.
-
-    Current Date context:
-    - The current date is {current_date}.
-    - Use this to calculate absolute expiry date if a relative expiry date is given (like 'Son X gün' or 'Kampanya X tarihine kadar geçerlidir').
-    - If the expiry year is not specified, assume it is {datetime.now().year}.
-
-    Scraped Markdown:
-    {cleaned_detail}
-    """
+        if cleaned_md:
+            scraped_details_text += f"\n--- CAMPAIGN: {title} ---\nURL: {abs_url}\n{cleaned_md}\n"
+            
+    extracted_rules = []
     
-    try:
-        rule = await call_gemini_with_retry(client, detail_prompt, CampaignRule)
-        return rule
-    except Exception as e:
-        print(f"Gemini Step 2 parsing failed for {title}: {e}")
-        return None
+    # Try direct parse on scraped combined content if we have scraped text
+    if scraped_details_text:
+        batch_prompt = f"""
+        You are an expert financial analyst. Analyze the following scraped markdown content of multiple bank campaign detail pages for {bank_name}.
+        Extract the campaign terms matching the JSON schema provided (a list of campaigns).
+        Ensure the campaign_url for each campaign matches the URL provided in the heading.
+
+        Current Date context:
+        - The current date is {current_date}.
+        - Use this to calculate absolute expiry date.
+        - If the expiry year is not specified, assume it is {datetime.now().year}.
+
+        Scraped Detail Pages Content:
+        {scraped_details_text}
+        """
+        try:
+            data = await call_gemini_with_retry(client, batch_prompt, CampaignExtractionList)
+            extracted_rules = data.get("campaigns", [])
+            print(f"Successfully batch-extracted {len(extracted_rules)} rules from scraped pages for {bank_name}.")
+        except Exception as e:
+            print(f"Gemini batch detail parsing failed for {bank_name}: {e}")
+            
+    # Fallback to search grounding for missing details
+    if not extracted_rules:
+        print(f"Direct scrape/parse detail failed for {bank_name} campaigns. Initiating 2-pass Google Search Fallback...")
+        campaign_titles = ", ".join([f"'{l['title']}' ({urllib.parse.urljoin(base_url, l['url'])})" for l in campaigns])
+        search_prompt = f"""
+        Search Google to find the official terms and conditions for these campaigns by {bank_name}: {campaign_titles}.
+        For each campaign, extract the campaign rules strictly matching the JSON schema (a list of campaigns).
+        Make sure to set the correct campaign_url for each.
+
+        Current Date context:
+        - The current date is {current_date}.
+        - Use this to calculate absolute expiry date.
+        """
+        try:
+            data = await call_gemini_search_then_parse(client, search_prompt, CampaignExtractionList)
+            extracted_rules = data.get("campaigns", [])
+            print(f"Gemini Google Search Fallback successfully batch-extracted {len(extracted_rules)} details for {bank_name}!")
+        except Exception as e:
+            print(f"Gemini Google Search Fallback batch detail extraction failed for {bank_name}: {e}")
+            
+    return extracted_rules
 
 async def main():
     # Setup Gemini API client
@@ -272,17 +370,31 @@ async def main():
         links = await get_active_campaign_links(client, bank_name, source["list_url"], browser_config)
         print(f"Found {len(links)} candidate campaigns for {bank_name}.")
         
-        for link in links:
-            absolute_url = urllib.parse.urljoin(source["base_url"], link["url"])
-            print(f"Processing details for: {link['title']} | URL: {absolute_url}")
-            rule = await parse_campaign_detail(client, bank_name, absolute_url, link["title"], browser_config, current_date)
-            if rule:
-                # Ensure bank name matches correctly
-                rule["bank_name"] = bank_name
-                rule["campaign_url"] = absolute_url
-                all_extracted_rules.append(rule)
-                print(f"Successfully extracted rule: {rule}")
-            await asyncio.sleep(1.0) # Small pause between pages
+        # Batch scrape and parse details
+        rules = await scrape_and_parse_campaigns_batch(client, bank_name, links, source["base_url"], browser_config, current_date)
+        for rule in rules:
+            if hasattr(rule, "model_dump"):
+                rule_dict = rule.model_dump()
+            elif hasattr(rule, "dict"):
+                rule_dict = rule.dict()
+            else:
+                rule_dict = dict(rule)
+                
+            # Ensure bank name is populated
+            rule_dict["bank_name"] = bank_name
+            # Fallback for empty campaign_url
+            if not rule_dict.get("campaign_url"):
+                # if there is a matching link by title, use it
+                matched_url = ""
+                for link in links:
+                    if link["title"].lower() in rule_dict.get("station_brand", "").lower() or rule_dict.get("station_brand", "").lower() in link["title"].lower():
+                        matched_url = urllib.parse.urljoin(source["base_url"], link["url"])
+                        break
+                rule_dict["campaign_url"] = matched_url or source["list_url"]
+                
+            all_extracted_rules.append(rule_dict)
+            print(f"Successfully extracted rule: {rule_dict}")
+        await asyncio.sleep(1.0) # Small pause between banks
 
     print(f"\nExtraction complete. Total campaigns extracted: {len(all_extracted_rules)}")
 
