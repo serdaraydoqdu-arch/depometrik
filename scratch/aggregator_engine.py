@@ -58,7 +58,8 @@ async def scrape_and_parse(url: str, bank_name: str) -> list[dict]:
                 if result_undetected.success:
                     markdown_content = result_undetected.markdown
 
-    print(f"Scraped content for {bank_name}. Length: {len(markdown_content)} characters. Preview: {markdown_content[:300].strip().replace('\n', ' ')}")
+    preview_text = markdown_content[:300].strip().replace('\n', ' ')
+    print(f"Scraped content for {bank_name}. Length: {len(markdown_content)} characters. Preview: {preview_text}")
     if not markdown_content:
         print(f"Failed to scrape content for {bank_name}.")
         return []
