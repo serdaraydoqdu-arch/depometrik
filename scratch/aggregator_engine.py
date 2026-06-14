@@ -32,14 +32,14 @@ class CampaignLinkList(BaseModel):
 # Step 2 Schema: Extracting structured campaign rules
 class CampaignRule(BaseModel):
     bank_name: str = Field(description="Official name of the bank organizing the campaign. E.g. Garanti BBVA, İş Bankası, Yapı Kredi, Akbank, Ziraat Bankası, VakıfBank")
-    station_brand: str = Field(description="The fuel brand targeted. Must be one of: Shell, Opet, BP, Petrol Ofisi, Aygaz, Total, or Genel if it applies to all stations.")
+    station_brand: str = Field(description="The fuel brand targeted. Must be one of: Shell, Opet, BP, Petrol Ofisi, Aygaz, Total, Aytemiz, Türkiye Petrolleri, Alpet, Sunpet, Kadoil, Socar, Bpet, Termopet, Teco, Siyam Petrol, Lukoil, or Genel if it applies to all stations.")
     target_tx_count: int = Field(default=4, description="Target number of transactions required to unlock the reward. E.g. 4")
     min_tx_amount: float = Field(default=0.0, description="Minimum transaction amount in Turkish Liras for each purchase to count.")
     reward_amount: float = Field(default=0.0, description="Total reward amount in TL (points or cashback) unlocked upon completion.")
     is_different_days_required: bool = Field(default=True, description="True if purchases must be made on different days, false otherwise.")
     expiry_date: str = Field(default="", description="Expiry date of the campaign in YYYY-MM-DD format.")
     campaign_url: str = Field(default="", description="The campaign detail URL.")
-    description: str = Field(default="", description="Detailed explanation of the campaign rules, rewards, and eligibility in Turkish. E.g. 'Maximum Kart ile Shell'de farklı günlerde 4 adet 1500 TL harcamaya 450 TL MaxiPuan.'")
+    description: str = Field(default="", description="Detailed structured description of the campaign in Turkish. Must describe: 1. Which specific card programs are eligible (e.g. Bonus, World, Sağlam Kart, Enpara). 2. Detail of the rewards (e.g. 200 TL indirim, 150 TL MaxiPuan). 3. Step-by-step participation steps (e.g. 'YAKIT yazıp 4566'ya gönderin' veya 'Akbank Mobil'den katılın'). 4. Exclusions (e.g. ticari kartlar dahil değildir, farklı günlerde olması gerekir).")
 
 class CampaignExtractionList(BaseModel):
     campaigns: list[CampaignRule]
@@ -86,11 +86,110 @@ CAMPAIGN_SOURCES = [
         "list_url": "https://www.vakifkart.com.tr/kampanyalar",
         "base_url": "https://www.vakifkart.com.tr"
     },
+    {
+        "bank": "DenizBank",
+        "list_url": "https://www.denizbank.com/kampanyalar",
+        "base_url": "https://www.denizbank.com"
+    },
+    {
+        "bank": "TEB",
+        "list_url": "https://www.teb.com.tr/kampanyalar/",
+        "base_url": "https://www.teb.com.tr"
+    },
+    {
+        "bank": "Fibabanka",
+        "list_url": "https://www.fibabanka.com.tr/kampanyalar",
+        "base_url": "https://www.fibabanka.com.tr"
+    },
+    {
+        "bank": "Şekerbank",
+        "list_url": "https://www.sekerbank.com.tr/kampanyalar",
+        "base_url": "https://www.sekerbank.com.tr"
+    },
+    {
+        "bank": "Anadolubank",
+        "list_url": "https://www.anadolubank.com.tr/kampanyalar",
+        "base_url": "https://www.anadolubank.com.tr"
+    },
+    {
+        "bank": "Aktif Bank",
+        "list_url": "https://www.nkolay.com/kampanyalar",
+        "base_url": "https://www.nkolay.com"
+    },
+    {
+        "bank": "Kuveyt Türk",
+        "list_url": "https://www.kuveytturk.com.tr/kampanyalar",
+        "base_url": "https://www.kuveytturk.com.tr"
+    },
+    {
+        "bank": "Türkiye Finans",
+        "list_url": "https://www.turkiyefinans.com.tr/tr-tr/kampanyalar/Sayfalar/default.aspx",
+        "base_url": "https://www.turkiyefinans.com.tr"
+    },
+    {
+        "bank": "Albaraka Türk",
+        "list_url": "https://www.albaraka.com.tr/kampanyalar",
+        "base_url": "https://www.albaraka.com.tr"
+    },
+    {
+        "bank": "Vakıf Katılım",
+        "list_url": "https://www.vakifkatilim.com.tr/kampanyalar",
+        "base_url": "https://www.vakifkatilim.com.tr"
+    },
+    {
+        "bank": "Ziraat Katılım",
+        "list_url": "https://www.ziraatkatilim.com.tr/kampanyalar",
+        "base_url": "https://www.ziraatkatilim.com.tr"
+    },
+    {
+        "bank": "Emlak Katılım",
+        "list_url": "https://emlakkatilim.com.tr/kampanyalar",
+        "base_url": "https://emlakkatilim.com.tr"
+    },
+    {
+        "bank": "HSBC",
+        "list_url": "https://www.hsbc.com.tr/hsbc/kampanyalar",
+        "base_url": "https://www.hsbc.com.tr"
+    },
+    {
+        "bank": "ING",
+        "list_url": "https://www.ing.com.tr/tr/bilgi-destek/kampanyalar",
+        "base_url": "https://www.ing.com.tr"
+    },
+    {
+        "bank": "Burgan Bank",
+        "list_url": "https://www.burgan.com.tr/kampanyalar",
+        "base_url": "https://www.burgan.com.tr"
+    },
+    {
+        "bank": "ICBC Turkey",
+        "list_url": "https://www.icbc.com.tr/tr/kampanyalar",
+        "base_url": "https://www.icbc.com.tr"
+    },
+    {
+        "bank": "TOM Bank",
+        "list_url": "https://www.tombank.com.tr/kampanyalar",
+        "base_url": "https://www.tombank.com.tr"
+    },
+    {
+        "bank": "PTT",
+        "list_url": "https://www.ptt.gov.tr/kampanyalar",
+        "base_url": "https://www.ptt.gov.tr"
+    },
 ]
 
 import re
 
-KEYWORDS = ["akaryakıt", "petrol", "motorin", "dizel", "lpg", "shell", "opet", "bp", "petrol ofisi", "aygaz", "total", "yakıt", "world üye", "maximum üye", "bonus üye"]
+KEYWORDS = [
+    # Akaryakıt Terimleri
+    "akaryakıt", "petrol", "motorin", "dizel", "lpg", "yakıt", "otogaz", "şarj", "ev şarj",
+    # İstasyon Markaları
+    "shell", "opet", "bp", "petrol ofisi", "aygaz", "total", "aytemiz", "türkiye petrolleri", "tp istasyon", "alpet", "sunpet", 
+    "kadoil", "socar", "bpet", "balpet", "termopet", "teco", "siyam petrol", "lukoil",
+    # Kart Programları & Önemli İfadeler
+    "world", "maximum", "bonus", "axess", "cardfinans", "paraf", "bankkart", "vakifkart", "sağlam kart", "happy card", "enpara", 
+    "ptt", "tom bank", "n kolay"
+]
 
 # Compile regexes once
 KEYWORD_REGEXES = []
