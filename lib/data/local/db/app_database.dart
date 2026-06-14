@@ -58,7 +58,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(campaigns, campaigns.campaignUrl);
           }
           if (from < 9) {
-            await m.addColumn(globalCampaigns, globalCampaigns.description);
+            // PowerSync-replicated tables (like global_campaigns) are views in SQLite.
+            // PowerSync's schema engine handles updating them automatically based on the powersync_service schema.
+            // We do NOT run Drift ALTER TABLE migrations on them.
           }
         },
         beforeOpen: (details) async {
