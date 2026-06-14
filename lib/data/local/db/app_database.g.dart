@@ -5687,6 +5687,17 @@ class $GlobalCampaignsTable extends GlobalCampaigns
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     campaignId,
@@ -5699,6 +5710,7 @@ class $GlobalCampaignsTable extends GlobalCampaigns
     expiryDate,
     isActive,
     campaignUrl,
+    description,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5804,6 +5816,15 @@ class $GlobalCampaignsTable extends GlobalCampaigns
         ),
       );
     }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5853,6 +5874,10 @@ class $GlobalCampaignsTable extends GlobalCampaigns
         DriftSqlType.string,
         data['${effectivePrefix}campaign_url'],
       ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
     );
   }
 
@@ -5873,6 +5898,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
   final DateTime expiryDate;
   final bool isActive;
   final String? campaignUrl;
+  final String? description;
   const GlobalCampaign({
     required this.campaignId,
     required this.bankName,
@@ -5884,6 +5910,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
     required this.expiryDate,
     required this.isActive,
     this.campaignUrl,
+    this.description,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5899,6 +5926,9 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
     map['is_active'] = Variable<bool>(isActive);
     if (!nullToAbsent || campaignUrl != null) {
       map['campaign_url'] = Variable<String>(campaignUrl);
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
     }
     return map;
   }
@@ -5917,6 +5947,9 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
       campaignUrl: campaignUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(campaignUrl),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
     );
   }
 
@@ -5938,6 +5971,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
       expiryDate: serializer.fromJson<DateTime>(json['expiryDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       campaignUrl: serializer.fromJson<String?>(json['campaignUrl']),
+      description: serializer.fromJson<String?>(json['description']),
     );
   }
   @override
@@ -5956,6 +5990,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
       'expiryDate': serializer.toJson<DateTime>(expiryDate),
       'isActive': serializer.toJson<bool>(isActive),
       'campaignUrl': serializer.toJson<String?>(campaignUrl),
+      'description': serializer.toJson<String?>(description),
     };
   }
 
@@ -5970,6 +6005,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
     DateTime? expiryDate,
     bool? isActive,
     Value<String?> campaignUrl = const Value.absent(),
+    Value<String?> description = const Value.absent(),
   }) => GlobalCampaign(
     campaignId: campaignId ?? this.campaignId,
     bankName: bankName ?? this.bankName,
@@ -5982,6 +6018,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
     expiryDate: expiryDate ?? this.expiryDate,
     isActive: isActive ?? this.isActive,
     campaignUrl: campaignUrl.present ? campaignUrl.value : this.campaignUrl,
+    description: description.present ? description.value : this.description,
   );
   GlobalCampaign copyWithCompanion(GlobalCampaignsCompanion data) {
     return GlobalCampaign(
@@ -6011,6 +6048,9 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
       campaignUrl: data.campaignUrl.present
           ? data.campaignUrl.value
           : this.campaignUrl,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
     );
   }
 
@@ -6026,7 +6066,8 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
           ..write('isDifferentDaysRequired: $isDifferentDaysRequired, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
-          ..write('campaignUrl: $campaignUrl')
+          ..write('campaignUrl: $campaignUrl, ')
+          ..write('description: $description')
           ..write(')'))
         .toString();
   }
@@ -6043,6 +6084,7 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
     expiryDate,
     isActive,
     campaignUrl,
+    description,
   );
   @override
   bool operator ==(Object other) =>
@@ -6057,7 +6099,8 @@ class GlobalCampaign extends DataClass implements Insertable<GlobalCampaign> {
           other.isDifferentDaysRequired == this.isDifferentDaysRequired &&
           other.expiryDate == this.expiryDate &&
           other.isActive == this.isActive &&
-          other.campaignUrl == this.campaignUrl);
+          other.campaignUrl == this.campaignUrl &&
+          other.description == this.description);
 }
 
 class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
@@ -6071,6 +6114,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
   final Value<DateTime> expiryDate;
   final Value<bool> isActive;
   final Value<String?> campaignUrl;
+  final Value<String?> description;
   final Value<int> rowid;
   const GlobalCampaignsCompanion({
     this.campaignId = const Value.absent(),
@@ -6083,6 +6127,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
     this.expiryDate = const Value.absent(),
     this.isActive = const Value.absent(),
     this.campaignUrl = const Value.absent(),
+    this.description = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GlobalCampaignsCompanion.insert({
@@ -6096,6 +6141,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
     required DateTime expiryDate,
     this.isActive = const Value.absent(),
     this.campaignUrl = const Value.absent(),
+    this.description = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : campaignId = Value(campaignId),
        bankName = Value(bankName),
@@ -6115,6 +6161,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
     Expression<DateTime>? expiryDate,
     Expression<bool>? isActive,
     Expression<String>? campaignUrl,
+    Expression<String>? description,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6129,6 +6176,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
       if (expiryDate != null) 'expiry_date': expiryDate,
       if (isActive != null) 'is_active': isActive,
       if (campaignUrl != null) 'campaign_url': campaignUrl,
+      if (description != null) 'description': description,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6144,6 +6192,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
     Value<DateTime>? expiryDate,
     Value<bool>? isActive,
     Value<String?>? campaignUrl,
+    Value<String?>? description,
     Value<int>? rowid,
   }) {
     return GlobalCampaignsCompanion(
@@ -6158,6 +6207,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
       expiryDate: expiryDate ?? this.expiryDate,
       isActive: isActive ?? this.isActive,
       campaignUrl: campaignUrl ?? this.campaignUrl,
+      description: description ?? this.description,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6197,6 +6247,9 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
     if (campaignUrl.present) {
       map['campaign_url'] = Variable<String>(campaignUrl.value);
     }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6216,6 +6269,7 @@ class GlobalCampaignsCompanion extends UpdateCompanion<GlobalCampaign> {
           ..write('expiryDate: $expiryDate, ')
           ..write('isActive: $isActive, ')
           ..write('campaignUrl: $campaignUrl, ')
+          ..write('description: $description, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9374,6 +9428,7 @@ typedef $$GlobalCampaignsTableCreateCompanionBuilder =
       required DateTime expiryDate,
       Value<bool> isActive,
       Value<String?> campaignUrl,
+      Value<String?> description,
       Value<int> rowid,
     });
 typedef $$GlobalCampaignsTableUpdateCompanionBuilder =
@@ -9388,6 +9443,7 @@ typedef $$GlobalCampaignsTableUpdateCompanionBuilder =
       Value<DateTime> expiryDate,
       Value<bool> isActive,
       Value<String?> campaignUrl,
+      Value<String?> description,
       Value<int> rowid,
     });
 
@@ -9447,6 +9503,11 @@ class $$GlobalCampaignsTableFilterComposer
 
   ColumnFilters<String> get campaignUrl => $composableBuilder(
     column: $table.campaignUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9509,6 +9570,11 @@ class $$GlobalCampaignsTableOrderingComposer
     column: $table.campaignUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GlobalCampaignsTableAnnotationComposer
@@ -9565,6 +9631,11 @@ class $$GlobalCampaignsTableAnnotationComposer
     column: $table.campaignUrl,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
 }
 
 class $$GlobalCampaignsTableTableManager
@@ -9614,6 +9685,7 @@ class $$GlobalCampaignsTableTableManager
                 Value<DateTime> expiryDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> campaignUrl = const Value.absent(),
+                Value<String?> description = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GlobalCampaignsCompanion(
                 campaignId: campaignId,
@@ -9626,6 +9698,7 @@ class $$GlobalCampaignsTableTableManager
                 expiryDate: expiryDate,
                 isActive: isActive,
                 campaignUrl: campaignUrl,
+                description: description,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9640,6 +9713,7 @@ class $$GlobalCampaignsTableTableManager
                 required DateTime expiryDate,
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> campaignUrl = const Value.absent(),
+                Value<String?> description = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GlobalCampaignsCompanion.insert(
                 campaignId: campaignId,
@@ -9652,6 +9726,7 @@ class $$GlobalCampaignsTableTableManager
                 expiryDate: expiryDate,
                 isActive: isActive,
                 campaignUrl: campaignUrl,
+                description: description,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

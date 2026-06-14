@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS public.global_campaigns (
     is_different_days_required BOOLEAN DEFAULT true NOT NULL,
     expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
     is_active BOOLEAN DEFAULT true NOT NULL,
-    campaign_url TEXT
+    campaign_url TEXT,
+    description TEXT
 );
 
 -- 6. User Cards Tablosu (Kullanıcının Cüzdanındaki Kartlar)

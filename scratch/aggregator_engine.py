@@ -39,6 +39,7 @@ class CampaignRule(BaseModel):
     is_different_days_required: bool = Field(default=True, description="True if purchases must be made on different days, false otherwise.")
     expiry_date: str = Field(default="", description="Expiry date of the campaign in YYYY-MM-DD format.")
     campaign_url: str = Field(default="", description="The campaign detail URL.")
+    description: str = Field(default="", description="Detailed explanation of the campaign rules, rewards, and eligibility in Turkish. E.g. 'Maximum Kart ile Shell'de farklı günlerde 4 adet 1500 TL harcamaya 450 TL MaxiPuan.'")
 
 class CampaignExtractionList(BaseModel):
     campaigns: list[CampaignRule]
@@ -429,6 +430,7 @@ async def main():
                 "is_different_days_required": bool(rule.get("is_different_days_required", True)),
                 "expiry_date": expiry_val,
                 "campaign_url": rule.get("campaign_url", ""),
+                "description": rule.get("description", ""),
                 "is_active": True
             }
             

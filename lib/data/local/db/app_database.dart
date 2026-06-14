@@ -23,7 +23,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -56,6 +56,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 8) {
             await m.addColumn(campaigns, campaigns.campaignUrl);
+          }
+          if (from < 9) {
+            await m.addColumn(globalCampaigns, globalCampaigns.description);
           }
         },
         beforeOpen: (details) async {

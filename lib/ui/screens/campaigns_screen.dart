@@ -885,6 +885,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
               if (campaign.isDifferentDaysRequired)
                 _buildDetailItem(Icons.calendar_today_rounded, 'Gün Kısıtı', 'Harcamaların farklı günlerde yapılması gerekmektedir.'),
               _buildDetailItem(Icons.lock_clock_rounded, 'Son Geçerlilik', '${campaign.expiryDate.day}/${campaign.expiryDate.month}/${campaign.expiryDate.year}'),
+              if (campaign.description != null && campaign.description!.trim().isNotEmpty) ...[
+                _buildDetailItem(Icons.description_outlined, 'Kampanya Detayları', campaign.description!),
+              ],
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
