@@ -90,6 +90,7 @@ class Campaigns extends Table {
   IntColumn get currentTxCount => integer().withDefault(const Constant(0))();
   RealColumn get rewardAmount => real().customConstraint('NOT NULL CHECK (reward_amount > 0)')();
   DateTimeColumn get expiryDate => dateTime()();
+  TextColumn get campaignUrl => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {campaignId};

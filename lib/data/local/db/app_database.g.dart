@@ -3085,6 +3085,17 @@ class $CampaignsTable extends Campaigns
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _campaignUrlMeta = const VerificationMeta(
+    'campaignUrl',
+  );
+  @override
+  late final GeneratedColumn<String> campaignUrl = GeneratedColumn<String>(
+    'campaign_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     campaignId,
@@ -3095,6 +3106,7 @@ class $CampaignsTable extends Campaigns
     currentTxCount,
     rewardAmount,
     expiryDate,
+    campaignUrl,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3182,6 +3194,15 @@ class $CampaignsTable extends Campaigns
     } else if (isInserting) {
       context.missing(_expiryDateMeta);
     }
+    if (data.containsKey('campaign_url')) {
+      context.handle(
+        _campaignUrlMeta,
+        campaignUrl.isAcceptableOrUnknown(
+          data['campaign_url']!,
+          _campaignUrlMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3223,6 +3244,10 @@ class $CampaignsTable extends Campaigns
         DriftSqlType.dateTime,
         data['${effectivePrefix}expiry_date'],
       )!,
+      campaignUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}campaign_url'],
+      ),
     );
   }
 
@@ -3241,6 +3266,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
   final int currentTxCount;
   final double rewardAmount;
   final DateTime expiryDate;
+  final String? campaignUrl;
   const Campaign({
     required this.campaignId,
     required this.userId,
@@ -3250,6 +3276,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
     required this.currentTxCount,
     required this.rewardAmount,
     required this.expiryDate,
+    this.campaignUrl,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3262,6 +3289,9 @@ class Campaign extends DataClass implements Insertable<Campaign> {
     map['current_tx_count'] = Variable<int>(currentTxCount);
     map['reward_amount'] = Variable<double>(rewardAmount);
     map['expiry_date'] = Variable<DateTime>(expiryDate);
+    if (!nullToAbsent || campaignUrl != null) {
+      map['campaign_url'] = Variable<String>(campaignUrl);
+    }
     return map;
   }
 
@@ -3275,6 +3305,9 @@ class Campaign extends DataClass implements Insertable<Campaign> {
       currentTxCount: Value(currentTxCount),
       rewardAmount: Value(rewardAmount),
       expiryDate: Value(expiryDate),
+      campaignUrl: campaignUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(campaignUrl),
     );
   }
 
@@ -3292,6 +3325,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
       currentTxCount: serializer.fromJson<int>(json['currentTxCount']),
       rewardAmount: serializer.fromJson<double>(json['rewardAmount']),
       expiryDate: serializer.fromJson<DateTime>(json['expiryDate']),
+      campaignUrl: serializer.fromJson<String?>(json['campaignUrl']),
     );
   }
   @override
@@ -3306,6 +3340,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
       'currentTxCount': serializer.toJson<int>(currentTxCount),
       'rewardAmount': serializer.toJson<double>(rewardAmount),
       'expiryDate': serializer.toJson<DateTime>(expiryDate),
+      'campaignUrl': serializer.toJson<String?>(campaignUrl),
     };
   }
 
@@ -3318,6 +3353,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
     int? currentTxCount,
     double? rewardAmount,
     DateTime? expiryDate,
+    Value<String?> campaignUrl = const Value.absent(),
   }) => Campaign(
     campaignId: campaignId ?? this.campaignId,
     userId: userId ?? this.userId,
@@ -3327,6 +3363,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
     currentTxCount: currentTxCount ?? this.currentTxCount,
     rewardAmount: rewardAmount ?? this.rewardAmount,
     expiryDate: expiryDate ?? this.expiryDate,
+    campaignUrl: campaignUrl.present ? campaignUrl.value : this.campaignUrl,
   );
   Campaign copyWithCompanion(CampaignsCompanion data) {
     return Campaign(
@@ -3350,6 +3387,9 @@ class Campaign extends DataClass implements Insertable<Campaign> {
       expiryDate: data.expiryDate.present
           ? data.expiryDate.value
           : this.expiryDate,
+      campaignUrl: data.campaignUrl.present
+          ? data.campaignUrl.value
+          : this.campaignUrl,
     );
   }
 
@@ -3363,7 +3403,8 @@ class Campaign extends DataClass implements Insertable<Campaign> {
           ..write('targetTxCount: $targetTxCount, ')
           ..write('currentTxCount: $currentTxCount, ')
           ..write('rewardAmount: $rewardAmount, ')
-          ..write('expiryDate: $expiryDate')
+          ..write('expiryDate: $expiryDate, ')
+          ..write('campaignUrl: $campaignUrl')
           ..write(')'))
         .toString();
   }
@@ -3378,6 +3419,7 @@ class Campaign extends DataClass implements Insertable<Campaign> {
     currentTxCount,
     rewardAmount,
     expiryDate,
+    campaignUrl,
   );
   @override
   bool operator ==(Object other) =>
@@ -3390,7 +3432,8 @@ class Campaign extends DataClass implements Insertable<Campaign> {
           other.targetTxCount == this.targetTxCount &&
           other.currentTxCount == this.currentTxCount &&
           other.rewardAmount == this.rewardAmount &&
-          other.expiryDate == this.expiryDate);
+          other.expiryDate == this.expiryDate &&
+          other.campaignUrl == this.campaignUrl);
 }
 
 class CampaignsCompanion extends UpdateCompanion<Campaign> {
@@ -3402,6 +3445,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
   final Value<int> currentTxCount;
   final Value<double> rewardAmount;
   final Value<DateTime> expiryDate;
+  final Value<String?> campaignUrl;
   final Value<int> rowid;
   const CampaignsCompanion({
     this.campaignId = const Value.absent(),
@@ -3412,6 +3456,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
     this.currentTxCount = const Value.absent(),
     this.rewardAmount = const Value.absent(),
     this.expiryDate = const Value.absent(),
+    this.campaignUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CampaignsCompanion.insert({
@@ -3423,6 +3468,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
     this.currentTxCount = const Value.absent(),
     required double rewardAmount,
     required DateTime expiryDate,
+    this.campaignUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : campaignId = Value(campaignId),
        userId = Value(userId),
@@ -3440,6 +3486,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
     Expression<int>? currentTxCount,
     Expression<double>? rewardAmount,
     Expression<DateTime>? expiryDate,
+    Expression<String>? campaignUrl,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3451,6 +3498,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
       if (currentTxCount != null) 'current_tx_count': currentTxCount,
       if (rewardAmount != null) 'reward_amount': rewardAmount,
       if (expiryDate != null) 'expiry_date': expiryDate,
+      if (campaignUrl != null) 'campaign_url': campaignUrl,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3464,6 +3512,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
     Value<int>? currentTxCount,
     Value<double>? rewardAmount,
     Value<DateTime>? expiryDate,
+    Value<String?>? campaignUrl,
     Value<int>? rowid,
   }) {
     return CampaignsCompanion(
@@ -3475,6 +3524,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
       currentTxCount: currentTxCount ?? this.currentTxCount,
       rewardAmount: rewardAmount ?? this.rewardAmount,
       expiryDate: expiryDate ?? this.expiryDate,
+      campaignUrl: campaignUrl ?? this.campaignUrl,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3506,6 +3556,9 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
     if (expiryDate.present) {
       map['expiry_date'] = Variable<DateTime>(expiryDate.value);
     }
+    if (campaignUrl.present) {
+      map['campaign_url'] = Variable<String>(campaignUrl.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3523,6 +3576,7 @@ class CampaignsCompanion extends UpdateCompanion<Campaign> {
           ..write('currentTxCount: $currentTxCount, ')
           ..write('rewardAmount: $rewardAmount, ')
           ..write('expiryDate: $expiryDate, ')
+          ..write('campaignUrl: $campaignUrl, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7954,6 +8008,7 @@ typedef $$CampaignsTableCreateCompanionBuilder =
       Value<int> currentTxCount,
       required double rewardAmount,
       required DateTime expiryDate,
+      Value<String?> campaignUrl,
       Value<int> rowid,
     });
 typedef $$CampaignsTableUpdateCompanionBuilder =
@@ -7966,6 +8021,7 @@ typedef $$CampaignsTableUpdateCompanionBuilder =
       Value<int> currentTxCount,
       Value<double> rewardAmount,
       Value<DateTime> expiryDate,
+      Value<String?> campaignUrl,
       Value<int> rowid,
     });
 
@@ -8015,6 +8071,11 @@ class $$CampaignsTableFilterComposer
 
   ColumnFilters<DateTime> get expiryDate => $composableBuilder(
     column: $table.expiryDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get campaignUrl => $composableBuilder(
+    column: $table.campaignUrl,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8067,6 +8128,11 @@ class $$CampaignsTableOrderingComposer
     column: $table.expiryDate,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get campaignUrl => $composableBuilder(
+    column: $table.campaignUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CampaignsTableAnnotationComposer
@@ -8113,6 +8179,11 @@ class $$CampaignsTableAnnotationComposer
     column: $table.expiryDate,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get campaignUrl => $composableBuilder(
+    column: $table.campaignUrl,
+    builder: (column) => column,
+  );
 }
 
 class $$CampaignsTableTableManager
@@ -8151,6 +8222,7 @@ class $$CampaignsTableTableManager
                 Value<int> currentTxCount = const Value.absent(),
                 Value<double> rewardAmount = const Value.absent(),
                 Value<DateTime> expiryDate = const Value.absent(),
+                Value<String?> campaignUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CampaignsCompanion(
                 campaignId: campaignId,
@@ -8161,6 +8233,7 @@ class $$CampaignsTableTableManager
                 currentTxCount: currentTxCount,
                 rewardAmount: rewardAmount,
                 expiryDate: expiryDate,
+                campaignUrl: campaignUrl,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8173,6 +8246,7 @@ class $$CampaignsTableTableManager
                 Value<int> currentTxCount = const Value.absent(),
                 required double rewardAmount,
                 required DateTime expiryDate,
+                Value<String?> campaignUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CampaignsCompanion.insert(
                 campaignId: campaignId,
@@ -8183,6 +8257,7 @@ class $$CampaignsTableTableManager
                 currentTxCount: currentTxCount,
                 rewardAmount: rewardAmount,
                 expiryDate: expiryDate,
+                campaignUrl: campaignUrl,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
