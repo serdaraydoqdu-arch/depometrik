@@ -61,6 +61,31 @@ CAMPAIGN_SOURCES = [
         "list_url": "https://www.maximum.com.tr/kampanyalar",
         "base_url": "https://www.maximum.com.tr"
     },
+    {
+        "bank": "Akbank",
+        "list_url": "https://www.axess.com.tr/axess/kampanyalar",
+        "base_url": "https://www.axess.com.tr"
+    },
+    {
+        "bank": "Ziraat Bankası",
+        "list_url": "https://www.bankkart.com.tr/kampanyalar",
+        "base_url": "https://www.bankkart.com.tr"
+    },
+    {
+        "bank": "QNB Finansbank",
+        "list_url": "https://www.cardfinans.com/kampanyalar",
+        "base_url": "https://www.cardfinans.com"
+    },
+    {
+        "bank": "Halkbank",
+        "list_url": "https://www.parafcard.com.tr/tr/kampanyalar.html",
+        "base_url": "https://www.parafcard.com.tr"
+    },
+    {
+        "bank": "VakıfBank",
+        "list_url": "https://www.vakifkart.com.tr/kampanyalar",
+        "base_url": "https://www.vakifkart.com.tr"
+    },
 ]
 
 import re
