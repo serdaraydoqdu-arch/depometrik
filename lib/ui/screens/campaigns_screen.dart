@@ -43,6 +43,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFF00A859), // Bonus Yeşili
       'textColor': Colors.white,
       'slogan': 'Bol Bol Bonus Kazandırır',
+      'network': 'Mastercard',
     },
     {
       'bankName': 'Yapı Kredi',
@@ -50,6 +51,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFF5A1C7D), // World Moru
       'textColor': Colors.white,
       'slogan': 'Dünya Kadar Ayrıcalık',
+      'network': 'Visa',
     },
     {
       'bankName': 'İş Bankası',
@@ -57,6 +59,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFFE50050), // Maximum Pembemsi Kırmızı
       'textColor': Colors.white,
       'slogan': 'Maksimum Hayat, Maksimum Kart',
+      'network': 'Visa',
     },
     {
       'bankName': 'Akbank',
@@ -64,6 +67,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFFFFCC00), // Axess Sarısı
       'textColor': const Color(0xFF1E293B),
       'slogan': 'Kazandıran Kart Axess',
+      'network': 'Mastercard',
     },
     {
       'bankName': 'QNB Finansbank',
@@ -71,6 +75,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFF0A2F64), // Finans Lacivert
       'textColor': Colors.white,
       'slogan': 'Finansal Yol Arkadaşınız',
+      'network': 'Visa',
     },
     {
       'bankName': 'Halkbank',
@@ -78,6 +83,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFF00A2E8), // Paraf Açık Mavi
       'textColor': Colors.white,
       'slogan': 'Ayrıcalıklar Paraf\'ta',
+      'network': 'TROY',
     },
     {
       'bankName': 'Ziraat Bankası',
@@ -85,6 +91,63 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
       'color': const Color(0xFFED1C24), // Ziraat Kırmızısı
       'textColor': Colors.white,
       'slogan': 'Ziraat\'ten Bir Başka Kart',
+      'network': 'TROY',
+    },
+    {
+      'bankName': 'VakıfBank',
+      'cardProgram': 'Vakıfkart',
+      'color': const Color(0xFFF1A80A), // VakıfBank Sarısı
+      'textColor': const Color(0xFF1E293B),
+      'slogan': 'Daima Seninle',
+      'network': 'TROY',
+    },
+    {
+      'bankName': 'DenizBank',
+      'cardProgram': 'Deniz Bonus',
+      'color': const Color(0xFF0F3A60), // DenizBank Laciverti
+      'textColor': Colors.white,
+      'slogan': 'Hayat Denizde Güzel',
+      'network': 'Visa',
+    },
+    {
+      'bankName': 'TEB',
+      'cardProgram': 'TEB Bonus',
+      'color': const Color(0xFF167B46), // TEB Yeşili
+      'textColor': Colors.white,
+      'slogan': 'Pratik Kart TEB',
+      'network': 'Mastercard',
+    },
+    {
+      'bankName': 'Kuveyt Türk',
+      'cardProgram': 'Sağlam Kart',
+      'color': const Color(0xFF0F5A47), // Kuveyt Türk Yeşili
+      'textColor': Colors.white,
+      'slogan': 'Sağlam Kart, Sağlam Kazanç',
+      'network': 'TROY',
+    },
+    {
+      'bankName': 'Türkiye Finans',
+      'cardProgram': 'Happy Card',
+      'color': const Color(0xFF0B8E36), // Türkiye Finans Yeşili
+      'textColor': Colors.white,
+      'slogan': 'Hayata Katılan Kart',
+      'network': 'Visa',
+    },
+    {
+      'bankName': 'Albaraka Türk',
+      'cardProgram': 'Albaraka World',
+      'color': const Color(0xFF907851), // Albaraka Altın Rengi
+      'textColor': Colors.white,
+      'slogan': 'Dünyanı Kolaylaştıran Kart',
+      'network': 'Mastercard',
+    },
+    {
+      'bankName': 'ING',
+      'cardProgram': 'ING Bonus',
+      'color': const Color(0xFFFF6600), // ING Turuncusu
+      'textColor': Colors.white,
+      'slogan': 'Sen Hayatını Yaşa',
+      'network': 'Visa',
     },
   ];
 
@@ -498,6 +561,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
           const SizedBox(height: 20),
           ..._cardPresets.map((preset) {
             final isSelected = _isCardSelected(preset['bankName'], preset['cardProgram']);
+            final baseColor = preset['color'] as Color;
+            final darkColor = Color.fromARGB(
+              baseColor.alpha,
+              (baseColor.red * 0.85).round(),
+              (baseColor.green * 0.85).round(),
+              (baseColor.blue * 0.85).round(),
+            );
+
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
               child: InkWell(
@@ -508,7 +579,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
                   height: 120,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? preset['color'] : Colors.white,
+                    color: isSelected ? null : Colors.white,
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: [baseColor, darkColor],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected ? Colors.transparent : AppTheme.borderLight,
@@ -517,23 +595,79 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: (preset['color'] as Color).withValues(alpha: 0.3),
+                              color: baseColor.withOpacity(0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             )
                           ]
                         : [
                             BoxShadow(
-                              color: AppTheme.textPrimary.withValues(alpha: 0.02),
+                              color: AppTheme.textPrimary.withOpacity(0.02),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             )
                           ],
                   ),
-                  child: Row(
+                  child: Stack(
                     children: [
-                      // Chip & Card Design
-                      Expanded(
+                      // Background watermark logo
+                      Positioned(
+                        right: -10,
+                        bottom: -15,
+                        child: Opacity(
+                          opacity: isSelected ? 0.08 : 0.03,
+                          child: Icon(
+                            Icons.payment_rounded,
+                            size: 80,
+                            color: isSelected ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                      // Card Chip
+                      Positioned(
+                        top: 32,
+                        left: 0,
+                        child: Container(
+                          width: 30,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber.shade300.withOpacity(isSelected ? 0.9 : 0.5),
+                                Colors.amber.shade500.withOpacity(isSelected ? 0.9 : 0.5),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.amber.shade600.withOpacity(isSelected ? 0.8 : 0.4),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.amber.shade700.withOpacity(0.2),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Divider(color: Colors.amber.shade700.withOpacity(0.2), height: 1, thickness: 0.5),
+                              VerticalDivider(color: Colors.amber.shade700.withOpacity(0.2), width: 1, thickness: 0.5),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Card content
+                      Padding(
+                        padding: const EdgeInsets.only(left: 44),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -544,14 +678,16 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
                                 Text(
                                   preset['bankName'].toUpperCase(),
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
                                     color: isSelected ? preset['textColor'] : AppTheme.textSecondary,
-                                    letterSpacing: 1,
+                                    letterSpacing: 1.2,
                                   ),
                                 ),
                                 if (isSelected)
-                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20)
+                                  Icon(Icons.check_circle_rounded, color: preset['textColor'], size: 20)
+                                else
+                                  const Icon(Icons.circle_outlined, color: AppTheme.borderLight, size: 20),
                               ],
                             ),
                             Column(
@@ -571,12 +707,30 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
                                   preset['slogan'],
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: isSelected ? preset['textColor'].withValues(alpha: 0.8) : AppTheme.textSecondary,
+                                    color: isSelected
+                                        ? (preset['textColor'] as Color).withOpacity(0.85)
+                                        : AppTheme.textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
                           ],
+                        ),
+                      ),
+                      // Card network logo
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Text(
+                          (preset['network'] ?? 'Visa').toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w900,
+                            color: isSelected ? preset['textColor'] : AppTheme.textSecondary.withOpacity(0.6),
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
                     ],
@@ -834,127 +988,134 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
               topRight: Radius.circular(28),
             ),
           ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.center,
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.borderLight,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Başlık
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    campaign.bankName.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.textSecondary,
-                      letterSpacing: 0.5,
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.borderLight,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  _buildBrandLogo(campaign.stationBrand, brandColor, height: 40),
+                  const SizedBox(height: 20),
+                  // Başlık
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        campaign.bankName.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      _buildBrandLogo(campaign.stationBrand, brandColor, height: 40),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${campaign.rewardAmount.toStringAsFixed(0)} TL ${campaign.stationBrand} Kampanyası',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: AppTheme.borderLight),
+                  const SizedBox(height: 16),
+                  // Detaylar listesi
+                  _buildDetailItem(Icons.info_outline_rounded, 'Koşul', '${campaign.targetTxCount} adet tek seferde min. ${campaign.minTxAmount.toStringAsFixed(0)} TL harcama.'),
+                  if (campaign.isDifferentDaysRequired)
+                    _buildDetailItem(Icons.calendar_today_rounded, 'Gün Kısıtı', 'Harcamaların farklı günlerde yapılması gerekmektedir.'),
+                  _buildDetailItem(Icons.lock_clock_rounded, 'Son Geçerlilik', '${campaign.expiryDate.day}/${campaign.expiryDate.month}/${campaign.expiryDate.year}'),
+                  if (campaign.description != null && campaign.description!.trim().isNotEmpty) ...[
+                    _buildDescriptionDetailItem(Icons.description_outlined, 'Kampanya Detayları', campaign.description!),
+                  ],
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      
+                      final urlStr = campaign.campaignUrl;
+                      Uri? uri;
+                      if (urlStr != null && urlStr.trim().isNotEmpty) {
+                        uri = Uri.tryParse(urlStr.trim());
+                      }
+
+                      if (uri == null || !uri.hasScheme) {
+                        final bank = campaign.bankName.toLowerCase();
+                        String fallbackUrl = 'https://www.google.com';
+                        if (bank.contains('garanti') || bank.contains('bonus')) {
+                          fallbackUrl = 'https://www.bonus.com.tr';
+                        } else if (bank.contains('yapı') || bank.contains('yapi') || bank.contains('world')) {
+                          fallbackUrl = 'https://www.worldcard.com.tr';
+                        } else if (bank.contains('iş') || bank.contains('is bank') || bank.contains('maximum')) {
+                          fallbackUrl = 'https://www.maximum.com.tr';
+                        } else if (bank.contains('akbank') || bank.contains('axess')) {
+                          fallbackUrl = 'https://www.axess.com.tr';
+                        } else if (bank.contains('qnb') || bank.contains('finans')) {
+                          fallbackUrl = 'https://www.cardfinans.com';
+                        } else if (bank.contains('halk') || bank.contains('paraf')) {
+                          fallbackUrl = 'https://www.parafcard.com.tr';
+                        } else if (bank.contains('ziraat') || bank.contains('bankkart')) {
+                          fallbackUrl = 'https://www.bankkart.com.tr';
+                        }
+                        uri = Uri.tryParse(fallbackUrl);
+                      }
+
+                      if (uri != null) {
+                        try {
+                          final launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+                          if (!launched) {
+                            throw Exception('Could not launch');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Sayfa açılamadı: $uri'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    child: const Text('KAMPANYAYA YÖNLENDİR'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: const BorderSide(color: AppTheme.borderLight, width: 1.5),
+                      foregroundColor: AppTheme.textSecondary,
+                    ),
+                    child: const Text('KAPAT', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                '${campaign.rewardAmount.toStringAsFixed(0)} TL ${campaign.stationBrand} Kampanyası',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Divider(color: AppTheme.borderLight),
-              const SizedBox(height: 16),
-              // Detaylar listesi
-              _buildDetailItem(Icons.info_outline_rounded, 'Koşul', '${campaign.targetTxCount} adet tek seferde min. ${campaign.minTxAmount.toStringAsFixed(0)} TL harcama.'),
-              if (campaign.isDifferentDaysRequired)
-                _buildDetailItem(Icons.calendar_today_rounded, 'Gün Kısıtı', 'Harcamaların farklı günlerde yapılması gerekmektedir.'),
-              _buildDetailItem(Icons.lock_clock_rounded, 'Son Geçerlilik', '${campaign.expiryDate.day}/${campaign.expiryDate.month}/${campaign.expiryDate.year}'),
-              if (campaign.description != null && campaign.description!.trim().isNotEmpty) ...[
-                _buildDetailItem(Icons.description_outlined, 'Kampanya Detayları', campaign.description!),
-              ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  
-                  final urlStr = campaign.campaignUrl;
-                  Uri? uri;
-                  if (urlStr != null && urlStr.trim().isNotEmpty) {
-                    uri = Uri.tryParse(urlStr.trim());
-                  }
-
-                  if (uri == null || !uri.hasScheme) {
-                    final bank = campaign.bankName.toLowerCase();
-                    String fallbackUrl = 'https://www.google.com';
-                    if (bank.contains('garanti') || bank.contains('bonus')) {
-                      fallbackUrl = 'https://www.bonus.com.tr';
-                    } else if (bank.contains('yapı') || bank.contains('yapi') || bank.contains('world')) {
-                      fallbackUrl = 'https://www.worldcard.com.tr';
-                    } else if (bank.contains('iş') || bank.contains('is bank') || bank.contains('maximum')) {
-                      fallbackUrl = 'https://www.maximum.com.tr';
-                    } else if (bank.contains('akbank') || bank.contains('axess')) {
-                      fallbackUrl = 'https://www.axess.com.tr';
-                    } else if (bank.contains('qnb') || bank.contains('finans')) {
-                      fallbackUrl = 'https://www.cardfinans.com';
-                    } else if (bank.contains('halk') || bank.contains('paraf')) {
-                      fallbackUrl = 'https://www.parafcard.com.tr';
-                    } else if (bank.contains('ziraat') || bank.contains('bankkart')) {
-                      fallbackUrl = 'https://www.bankkart.com.tr';
-                    }
-                    uri = Uri.tryParse(fallbackUrl);
-                  }
-
-                  if (uri != null) {
-                    try {
-                      final launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
-                      if (!launched) {
-                        throw Exception('Could not launch');
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Sayfa açılamadı: $uri'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  }
-                },
-                child: const Text('KAMPANYAYA YÖNLENDİR'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: const BorderSide(color: AppTheme.borderLight, width: 1.5),
-                  foregroundColor: AppTheme.textSecondary,
-                ),
-                child: const Text('KAPAT', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
         );
       },
@@ -990,6 +1151,72 @@ class _CampaignsScreenState extends State<CampaignsScreen> with SingleTickerProv
                     height: 1.4,
                   ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionDetailItem(IconData icon, String title, String description) {
+    final rawSentences = description.split(RegExp(r'\.(?=\s|$)'));
+    final sentences = rawSentences
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.primaryTeal, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...sentences.map((sentence) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 6),
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.primaryTeal,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$sentence.',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textPrimary,
+                              height: 1.45,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),
